@@ -15,6 +15,7 @@ public class SandboxScene: SKScene {
     var sandboxDelegate: SandboxDelegate?
     var pausedState: [String: CGVector] = [:]
     var state: SandboxState = .dynamic
+    let env = Environment.shared
     
     enum SandboxState {
         case dynamic
@@ -53,8 +54,10 @@ public class SandboxScene: SKScene {
             switch state {
             case .paused:
                 pausedState[name] = nodeBody.velocity
+                addDirectionalArrows(node: node)
                 nodeBody.isDynamic = false
             case .dynamic:
+                removeArrows()
                 nodeBody.isDynamic = true
                 guard let previousVelocity = pausedState[name] else { break }
                 nodeBody.velocity = previousVelocity
@@ -71,6 +74,47 @@ public class SandboxScene: SKScene {
             }
             addChild(node)
         }
+    }
+    
+    var arrows: [ArrowSprite] = [ArrowSprite]()
+    
+    func addDirectionalArrows(node: SKNode) {
+        guard let body = node.physicsBody else { return }
+        if body.mass > 0 {
+            let gravitationalForce: CGFloat = roundNum(body.mass * CGFloat(env.gravity))
+            // TODO: Replace 35 with object hitbox size + 5
+            let gravityArrow = ArrowSprite(
+                position: node.position + CGPoint(x: 0, y: -55),
+                lineHeight: gravitationalForce,
+                direction: .down
+            )
+            
+            gravityArrow.textNode.text = "Fg = \(gravitationalForce) m/s^2"
+            addChild(gravityArrow)
+            arrows.append(gravityArrow)
+        }
+        
+        let angleOfVelocity = Float(atan(body.velocity.dy / body.velocity.dx))
+        print(angleOfVelocity)
+        let velocityArrow = ArrowSprite(
+            position: node.position,
+            lineHeight: 25,
+            direction: .angle(of: -angleOfVelocity)
+        )
+        velocityArrow.textNode.text = "V = \(body.angularVelocity) m/s"
+        addChild(velocityArrow)
+        arrows.append(velocityArrow)
+ 
+    }
+    
+    func removeArrows() {
+        for arrow in arrows {
+            arrow.removeFromParent()
+        }
+    }
+    
+    func roundNum(_ number: CGFloat) -> CGFloat {
+        return CGFloat(round(number * 1000) / 1000.0)
     }
     
     // MARK: - Touch Delegates
