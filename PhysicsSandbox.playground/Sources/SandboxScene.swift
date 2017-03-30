@@ -5,56 +5,70 @@ protocol SandboxDelegate {
 }
 
 public class SandboxScene: SKScene {
-    
-    public var point: CGPoint?
-
-    public var path: CGPath? {
-        didSet {
-            let resultant = sqrt(pow(point!.x, 2) + pow(point!.y, 2)) / 2
-            let action = SKAction.repeatForever(SKAction.follow(path!, asOffset: false, orientToPath: false, speed: 200.0))
-            // MARK: - TODO
-            let angle : Float = Float(-M_PI)
-            let rotate = SKAction.repeatForever(SKAction.rotate(byAngle: CGFloat(angle), duration: TimeInterval(resultant.divided(by: 200))))
-            
-            let group = SKAction.group([action, rotate])
-            sprite.run(group)
-            
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.0) {
-                self.startTracing()
-            }
-        }
-    }
-    
-    func startTracing() {
-        let emitter = SKEmitterNode(fileNamed: "Trail.sks")
-        emitter!.targetNode = self
-        
-        let dotNode = SKShapeNode()
-        dotNode.position = CGPoint(x: -60, y: 0)
-        sprite.addChild(dotNode)
-        dotNode.addChild(emitter!)
+    /// Shared Enviroment
+    let env = Enviroment.shared
+    /// Polygon that is being displayed
+    public var polygon: Polygon? {
+        didSet { startMouvement() }
     }
     
     let sprite: SKSpriteNode
     
+    // MARK: - Init
     override public init(size: CGSize) {
         sprite = SKSpriteNode(imageNamed: "Arrow-Head.png")
         super.init(size: size)
         self.backgroundColor = UIColor.clear
-        sprite.size = CGSize(width: 60, height: 60)
-        sprite.anchorPoint = CGPoint(x: 1.0,y: 0.0)
+        sprite.size = CGSize(width: 30, height: 30)
+        sprite.anchorPoint = env.anchorPoint
         addChild(sprite)
     }
     
-    public override func didChangeSize(_ oldSize: CGSize) {
-        //self.physicsBody = SKPhysicsBody(edgeLoopFrom: self.frame)
+    // MARK: - Methods
+    func startTracing() {
+        guard let emitter = SKEmitterNode(fileNamed: "Trail.sks") else { return }
+        emitter.targetNode = self
+        emitter.particleScale = env.trailSize
+        emitter.particleLifetime = env.trailLifeTime
+        emitter.particleBirthRate = env.particleBirthRate
+        let dotNode = SKShapeNode()
+        dotNode.position = env.drawPoint
+        sprite.addChild(dotNode)
+        dotNode.addChild(emitter)
     }
     
+    func startMouvement() {
+        guard let polygon = self.polygon else { return }
+        /// Action used to follow the dot node around the screen
+        var follow = SKAction.follow(polygon.path, asOffset: false, orientToPath: false, speed: env.followSpeed)
+        
+        /// Angle of the rotation
+        let angle: CGFloat = CGFloat(-M_PI)
+        /// Determines the amount of time for each rotation to take based on a side. This is too prevent it from becoming out of sync and when the traced lines elasped they don't match
+        let rotateDuration = (polygon.sideLength.divided(by: env.followSpeed)).divided(by: env.rotationsPerSide)
+        /// Action used to rotate the triangle
+        var rotate = SKAction.rotate(byAngle: angle, duration: TimeInterval(rotateDuration))
+        
+        switch env.mouvement {
+        case .infinit:
+            follow = SKAction.repeatForever(follow)
+            rotate = SKAction.repeatForever(rotate)
+        case .repeats(times: let times):
+            follow = SKAction.repeat(follow, count: times)
+            rotate = SKAction.repeat(rotate, count: times * Int(CGFloat(env.numberOfSides) * env.rotationsPerSide))
+        }
+        
+        let group = SKAction.group([follow, rotate])
+        sprite.run(group)
+        // Delays the commencement of the drawing
+        DispatchQueue.main.asyncAfter(wallDeadline: .now() + env.traceDelay) {
+            self.startTracing()
+        }
+    }
+
+    
+    // MARK: - Other
     required public init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
-    }
-    
-    // MARK: - Methods
-    func rotateAction() {
     }
 }

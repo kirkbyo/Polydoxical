@@ -3,19 +3,15 @@
 import SpriteKit
 import PlaygroundSupport
 
-let frame = CGRect(x: 0, y: 0, width: 500, height: 500)
-let view = PolygonView(frame: frame)
-view.backgroundColor = UIColor.orange
+let env = Enviroment.shared
+env.numberOfSides = 3
+env.traceDelay = 0.0
+env.trailLifeTime = 8
+env.rotationsPerSide = 2
+env.particleBirthRate = 250
+env.mouvement = .infinit
 
-let sk = SKView(frame: frame)
-sk.allowsTransparency = true
-view.addSubview(sk)
-sk.showsFPS = true
-sk.showsPhysics = true
+let controller = SimulatorController()
 
-let scene = SandboxScene(size: frame.size)
-scene.point = view.point
-scene.path = view.path
-sk.presentScene(scene)
 PlaygroundPage.current.needsIndefiniteExecution = true
-PlaygroundPage.current.liveView = view
+PlaygroundPage.current.liveView = controller

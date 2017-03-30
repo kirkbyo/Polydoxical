@@ -1,9 +1,27 @@
 import UIKit
 
-class Polygon {
-    typealias Path = (path: CGPath, sideLength: CGFloat)
+
+/// Create customizable polygons from points
+public class Polygon {
+    /// Length of each side of the polygon
+    public var sideLength: CGFloat
+    /// Path of the polygon
+    public var path: CGPath
     
-    private func createArrayOfPoints(sides: Int, at point: CGPoint, radius: CGFloat, offset: CGFloat) -> [CGPoint] {
+    init(sideLength: CGFloat, path: CGPath) {
+        self.sideLength = sideLength
+        self.path = path
+    }
+    
+    
+    /// Creates an array of points of the polygon based on the provided information.
+    ///
+    /// - Parameters:
+    ///   - sides: Number of sides on the polygon
+    ///   - point: Centre point of the polygon
+    ///   - radius: Size of the drawing board that the polygon will be created on
+    ///   - offset: Offset the points of the polygon
+    fileprivate static func createArrayOfPoints(sides: Int, at point: CGPoint, radius: CGFloat, offset: CGFloat) -> [CGPoint] {
         let angle = (360/CGFloat(sides)).radians()
         var i = 0
         var points = [CGPoint]()
@@ -16,9 +34,17 @@ class Polygon {
         return points
     }
     
-    private func pathFromPoints(sides: Int, at point: CGPoint, radius: CGFloat, offset: CGFloat) -> Path? {
+    
+    /// Creates a polygon based on the provided information.
+    ///
+    /// - Parameters:
+    ///   - sides: Number of sides on the polygon
+    ///   - point: Centre point of the polygon
+    ///   - size: Size of the drawing board that the polygon will be created on
+    ///   - offset: Offset the points of the polygon (defaults to 0)
+    public static func create(polygonOf sides: Int, at point: CGPoint, size: CGFloat, offset: CGFloat=0) -> Polygon? {
         let path = CGMutablePath()
-        let points = createArrayOfPoints(sides: sides, at: point, radius: radius, offset: offset)
+        let points = createArrayOfPoints(sides: sides, at: point, radius: size, offset: offset)
         guard points.indices.count > 2 else { return nil }
         
         let start = points[0]
@@ -30,17 +56,6 @@ class Polygon {
         
         let difference = points[1] - points[0]
         let sideLength = sqrt(pow(difference.x, 2) + pow(difference.y, 2))
-        return (path: path, sideLength)
+        return Polygon(sideLength: sideLength, path: path)
     }
-    
 }
-/*
-func drawPolygonUsingPath(ctx:CGContext, x:CGFloat, y:CGFloat, radius:CGFloat, sides:Int, color:UIColor, offset:CGFloat) -> (CGPath, CGPoint) {
-    let path = polygonPath(x: x, y: y, radius: radius, sides: sides, offset: offset)
-    ctx.addPath(path.0)
-    let cgcolor = color.cgColor
-    ctx.setFillColor(cgcolor)
-    ctx.fillPath()
-    return path
-}
- */
