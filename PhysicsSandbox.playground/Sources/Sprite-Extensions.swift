@@ -18,3 +18,10 @@ public extension SKNode {
         self.position = CGPoint(x: (size.width - nodeSize.width/2)/2, y: (size.height - nodeSize.height/2)/2)
     }
 }
+
+public extension CGFloat {
+    func radians() -> CGFloat {
+        let b = CGFloat(M_PI) * (self/180)
+        return b
+    }
+}

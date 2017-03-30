@@ -5,40 +5,49 @@ protocol SandboxDelegate {
 }
 
 public class SandboxScene: SKScene {
-    private var selectedNode: SKNode?
-    public var nodes: [SKNode] = [SKNode]() {
-        didSet {
-            layoutNodes()
-        }
-    }
-    var touchPoint: CGPoint?
-    var sandboxDelegate: SandboxDelegate?
-    var pausedState: [String: CGVector] = [:]
-    var state: SandboxState = .dynamic
-    let env = Environment.shared
     
-    enum SandboxState {
-        case dynamic
-        case paused
-        
-        mutating func inverse() {
-            switch self {
-            case .dynamic:
-                self = .paused
-            case .paused:
-                self = .dynamic
+    public var point: CGPoint?
+
+    public var path: CGPath? {
+        didSet {
+            let resultant = sqrt(pow(point!.x, 2) + pow(point!.y, 2)) / 2
+            let action = SKAction.repeatForever(SKAction.follow(path!, asOffset: false, orientToPath: false, speed: 200.0))
+            // MARK: - TODO
+            let angle : Float = Float(-M_PI)
+            let rotate = SKAction.repeatForever(SKAction.rotate(byAngle: CGFloat(angle), duration: TimeInterval(resultant.divided(by: 200))))
+            
+            let group = SKAction.group([action, rotate])
+            sprite.run(group)
+            
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.0) {
+                self.startTracing()
             }
         }
     }
     
+    func startTracing() {
+        let emitter = SKEmitterNode(fileNamed: "Trail.sks")
+        emitter!.targetNode = self
+        
+        let dotNode = SKShapeNode()
+        dotNode.position = CGPoint(x: -60, y: 0)
+        sprite.addChild(dotNode)
+        dotNode.addChild(emitter!)
+    }
+    
+    let sprite: SKSpriteNode
+    
     override public init(size: CGSize) {
+        sprite = SKSpriteNode(imageNamed: "Arrow-Head.png")
         super.init(size: size)
-        layoutNodes()
-        self.backgroundColor = #colorLiteral(red: 1.0, green: 1.0, blue: 1.0, alpha: 1.0)
+        self.backgroundColor = UIColor.clear
+        sprite.size = CGSize(width: 60, height: 60)
+        sprite.anchorPoint = CGPoint(x: 1.0,y: 0.0)
+        addChild(sprite)
     }
     
     public override func didChangeSize(_ oldSize: CGSize) {
-        self.physicsBody = SKPhysicsBody(edgeLoopFrom: self.frame)
+        //self.physicsBody = SKPhysicsBody(edgeLoopFrom: self.frame)
     }
     
     required public init?(coder aDecoder: NSCoder) {
@@ -46,115 +55,6 @@ public class SandboxScene: SKScene {
     }
     
     // MARK: - Methods
-    func pauseMouvement() {
-        state.inverse()
-        for node in nodes {
-            guard let name = node.name else { continue }
-            guard let nodeBody = node.physicsBody else { continue }
-            switch state {
-            case .paused:
-                pausedState[name] = nodeBody.velocity
-                addDirectionalArrows(node: node)
-                nodeBody.isDynamic = false
-            case .dynamic:
-                removeArrows()
-                nodeBody.isDynamic = true
-                guard let previousVelocity = pausedState[name] else { break }
-                nodeBody.velocity = previousVelocity
-                pausedState[name] = nil
-            }
-        }
-        sandboxDelegate?.didPause()
-    }
-    
-    func layoutNodes() {
-        for node in self.nodes {
-            if node.name == nil {
-                node.name = UUID().uuidString
-            }
-            addChild(node)
-        }
-    }
-    
-    var arrows: [ArrowSprite] = [ArrowSprite]()
-    
-    func addDirectionalArrows(node: SKNode) {
-        guard let body = node.physicsBody else { return }
-        if body.mass > 0 {
-            let gravitationalForce: CGFloat = roundNum(body.mass * CGFloat(env.gravity))
-            // TODO: Replace 35 with object hitbox size + 5
-            let gravityArrow = ArrowSprite(
-                position: node.position + CGPoint(x: 0, y: -55),
-                lineHeight: gravitationalForce,
-                direction: .down
-            )
-            
-            gravityArrow.textNode.text = "Fg = \(gravitationalForce) m/s^2"
-            addChild(gravityArrow)
-            arrows.append(gravityArrow)
-        }
-        
-        let angleOfVelocity = Float(atan(body.velocity.dy / body.velocity.dx))
-        print(angleOfVelocity)
-        let velocityArrow = ArrowSprite(
-            position: node.position,
-            lineHeight: 25,
-            direction: .angle(of: -angleOfVelocity)
-        )
-        velocityArrow.textNode.text = "V = \(body.angularVelocity) m/s"
-        addChild(velocityArrow)
-        arrows.append(velocityArrow)
- 
-    }
-    
-    func removeArrows() {
-        for arrow in arrows {
-            arrow.removeFromParent()
-        }
-    }
-    
-    func roundNum(_ number: CGFloat) -> CGFloat {
-        return CGFloat(round(number * 1000) / 1000.0)
-    }
-    
-    // MARK: - Touch Delegates
-    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        if touch.tapCount == 2 {
-            pauseMouvement()
-            return
-        }
-        
-        let location = touch.location(in: self)
-        if let touchedNode = self.nodes(at: location).first {
-            touchPoint = location
-            selectedNode = touchedNode
-        }
-    }
-    
-    public override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = touches.first else { return }
-        let location = touch.location(in: self)
-        touchPoint = location
-    }
-    
-    public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        touchPoint = nil
-        selectedNode = nil
-    }
-    
-    // MARK: - Game Loop Delegate
-    public override func update(_ currentTime: CFTimeInterval) {
-        super.update(currentTime)
-        
-        guard let touchPoint = self.touchPoint else { return }
-        guard let selectedNode = self.selectedNode else { return }
-        let dt: CGFloat = 1.0/60.0
-        let distance = CGVector(
-            dx: touchPoint.x - selectedNode.position.x,
-            dy: touchPoint.y - selectedNode.position.y
-        )
-        let velocity = CGVector(dx: distance.dx / dt, dy: distance.dy / dt)
-        selectedNode.physicsBody?.velocity = velocity
+    func rotateAction() {
     }
 }
