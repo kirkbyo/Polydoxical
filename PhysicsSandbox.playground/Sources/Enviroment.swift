@@ -36,4 +36,21 @@ public class Enviroment {
     public var backgroundColor: UIColor = UIColor.orange
     /// Fill color of the polygon
     public var polygonColor: UIColor = #colorLiteral(red: 0.2392156869, green: 0.6745098233, blue: 0.9686274529, alpha: 1)
+    
+    public init() {}
+}
+
+public class EmitterEnviroment {
+    /// Scale of the trail. Higher scale bigger the width/height of trail will be. (Defaults to 0.1)
+    public var trailSize: CGFloat = 0.1
+    /// Trail life time in seconds. Determines how long the trail lasts on screen for after being added. (Defaults to 11.0)
+    public var trailLifeTime: CGFloat = 5.0
+    /// Number of sides on the polygon
+    public var numberOfSides: Int = 6
+    /// Delay between the commencement of the mouvement and the commencement of the tracing
+    public var traceDelay: TimeInterval = 0.5
+    /// Particle emition. The amount of particles released every second. Defaults to 200.
+    public var particleBirthRate: CGFloat = 200
+    
+    public init() {}
 }
