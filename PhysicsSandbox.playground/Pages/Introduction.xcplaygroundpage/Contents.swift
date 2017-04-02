@@ -7,12 +7,3 @@ import PlaygroundSupport
  
  The entire project is alt-click friendly.
  */
-
-
-let env = Enviroment.shared
-env.mouvement = .infinit
-
-let controller = SimulatorController()
-
-PlaygroundPage.current.needsIndefiniteExecution = true
-PlaygroundPage.current.liveView = controller

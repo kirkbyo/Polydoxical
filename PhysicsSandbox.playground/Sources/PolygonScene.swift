@@ -5,42 +5,74 @@ protocol SandboxDelegate {
 }
 
 public class SandboxScene: SKScene {
-    /// Shared Enviroment
-    let env = Enviroment.shared
     /// Polygon that is being displayed
     public var polygon: Polygon? {
-        didSet { startMouvement() }
+        didSet {
+            moveNodes()
+        }
     }
     
-    let sprite: SKSpriteNode
+    public var rotatingNodes = [RotatingNode]() {
+        didSet {
+            addRotatingNodes()
+        }
+    }
     
     // MARK: - Init
     override public init(size: CGSize) {
-        sprite = SKSpriteNode(imageNamed: "Arrow-Head.png")
         super.init(size: size)
         self.backgroundColor = UIColor.clear
-        sprite.size = CGSize(width: 30, height: 30)
-        sprite.anchorPoint = env.anchorPoint
-        addChild(sprite)
     }
     
-    // MARK: - Methods
-    func startTracing() {
+    func moveNodes() {
+        guard let polygon = polygon else { return }
+        var shift: Int = 0
+        for node in rotatingNodes {
+            shift += 1
+            node.main.removeAllActions()
+            node.referenceEmittingNode.removeAllActions()
+            node.main.removeAllChildren()
+            
+            let centre = CGPoint(x: frame.midX, y: frame.midY)
+            guard let polygon = Polygon.create(polygonOf: polygon.sides, at: centre, size: self.frame.width / 3, shift: (node.position ?? shift)) else {
+                print("[Error] Polygon was not properly created."); return
+            }
+            follow(path: polygon.path, for: node)
+            startTracing(for: node)
+        }
+    }
+    
+    func addRotatingNodes() {
+        for node in rotatingNodes {
+            guard node.main.parent == nil else { continue }
+            node.main.position = CGPoint(x: 100, y: 100)
+            addChild(node.main)
+        }
+    }
+    
+    func startTracing(for node: RotatingNode) {
         guard let emitter = SKEmitterNode(fileNamed: "Trail.sks") else { return }
+        let env = node.enviroment.tracer
         emitter.targetNode = self
         emitter.particleScale = env.trailSize
         emitter.particleLifetime = env.trailLifeTime
         emitter.particleBirthRate = env.particleBirthRate
         let dotNode = SKShapeNode()
-        dotNode.position = env.drawPoint
-        sprite.addChild(dotNode)
-        dotNode.addChild(emitter)
+        dotNode.position = node.enviroment.drawPoint
+        print(node.enviroment.drawPoint)
+        node.main.addChild(dotNode)
+        
+        // Delays the commencement of the drawing
+        DispatchQueue.main.asyncAfter(wallDeadline: .now() + node.enviroment.traceDelay) {
+            dotNode.addChild(emitter)
+        }
     }
     
-    func startMouvement() {
+    func follow(path: CGPath, for node: RotatingNode) {
         guard let polygon = self.polygon else { return }
+        let env = node.enviroment
         /// Action used to follow the dot node around the screen
-        var follow = SKAction.follow(polygon.path, asOffset: false, orientToPath: false, speed: env.followSpeed)
+        var follow = SKAction.follow(path, asOffset: false, orientToPath: false, speed: env.followSpeed)
         
         /// Angle of the rotation
         let angle: CGFloat = CGFloat(-M_PI)
@@ -59,13 +91,10 @@ public class SandboxScene: SKScene {
         }
         
         let group = SKAction.group([follow, rotate])
-        sprite.run(group)
-        // Delays the commencement of the drawing
-        DispatchQueue.main.asyncAfter(wallDeadline: .now() + env.traceDelay) {
-            self.startTracing()
-        }
+        node.main.run(group)
     }
-
+    
+    // MARK: - Methods
     
     // MARK: - Other
     required public init?(coder aDecoder: NSCoder) {
